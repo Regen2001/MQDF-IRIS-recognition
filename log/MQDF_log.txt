@@ -1,0 +1,12 @@
+2023-04-16 17:30:30,185 - MQDF - INFO - starting...
+2023-04-16 17:30:30,186 - MQDF - INFO - loaded training set
+2023-04-16 17:30:30,233 - MQDF - INFO - Averay accuracy of 5-fold cross-validation when h = 1.00 is 90.00
+2023-04-16 17:30:30,464 - MQDF - INFO - Averay accuracy of 5-fold cross-validation when h = 1.05 is 90.67
+2023-04-16 17:30:30,691 - MQDF - INFO - Averay accuracy of 5-fold cross-validation when h = 1.10 is 91.33
+2023-04-16 17:30:30,904 - MQDF - INFO - Averay accuracy of 5-fold cross-validation when h = 1.15 is 91.33
+2023-04-16 17:30:31,816 - MQDF - INFO - Running time of MQDF1 with 5-fold cross validation for each h: 0.047
+2023-04-16 17:30:31,816 - MQDF - INFO - 
+2023-04-16 17:30:31,835 - MQDF - INFO - Averay accuracy of 5-fold cross-validation when k = 1 is 58.67
+2023-04-16 17:30:31,883 - MQDF - INFO - Averay accuracy of 5-fold cross-validation when k = 2 is 38.00
+2023-04-16 17:30:31,918 - MQDF - INFO - Averay accuracy of 5-fold cross-validation when k = 3 is 36.67
+2023-04-16 17:30:31,918 - MQDF - INFO - Running time of MQDF2 with 5-fold cross validation for each k: 0.034
