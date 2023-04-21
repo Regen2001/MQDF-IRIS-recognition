@@ -307,7 +307,7 @@ if __name__ == '__main__':
         h_list.append(h*.01)
         mqdf1_acc_list.append(MQDF_avg_acc)
     stop = timeit.default_timer() # Stop timer
-    # draw(h_list, mqdf1_acc_list, 'h', 'Classification rate / %', "mqdf_acc")
+    draw(h_list, mqdf1_acc_list, 'h', 'Classification rate / %', "mqdf_acc")
     # print('Running time of MQDF1 with 5-fold cross validation:', stop - start) # Running time of MQDF1
     log_string(logger, 'Running time of MQDF1 with 5-fold cross validation for each h: %.3f' %((stop - start)/len(h_list)))
 
