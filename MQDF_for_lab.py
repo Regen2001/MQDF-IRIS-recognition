@@ -103,9 +103,9 @@ def QDF_model(train_data, class_num):  # Modified function from QDF to obtain th
     for i in range(class_num):  # For all classes
         ###############################################################################################################
         #                                   YOU NEED FILL FOLLOWING CODES:
-        train_data[i] = np.float64(train_data[i])# Convert the ith data to a matrix & use 64-bit precision
-        mean.append(np.mean(train_data[i], axis=0))  # Store the mean for all features in ith class
-        cov_matrix.append(np.cov(train_data[i],rowvar=False))  # Store the covariance matrix of ith class
+        train_data[i] = np.matrix(train_data[i], dtype=np.float64)
+        mean.append(train_data[i].mean(0).T)
+        cov_matrix.append(np.matrix(np.cov(train_data[i].T)))
         # Tip: use np.cov, consider a row as one feature. Pay attention to the data that may should be transposed
         ###############################################################################################################
     return mean, cov_matrix
@@ -128,20 +128,22 @@ def MQDF1_model(cov, d, class_num, h):  # Function to obtain the trained paramet
     return eigenvalue, eigenvector, delta
 
 
-def predict_MQDF1(d, np_x, class_num, mean, eigenvalue, eigenvector, delta):  # Function to perform classification based on the MQDF1 trained parameters
+def predict_MQDF1(d, np_x, class_num, mean, eigenvalue, eigenvector,
+                  delta):  # Function to perform classification based on the MQDF1 trained parameters
     # assert (k < d and k > 0)  # Assertion error when k greater or equal to d and negative k
     pred_label = []  # Initialize a list to store the predicted classes
     for sample in np_x:  # For the number of test samples
         test_x = np.matrix(sample, np.float64).T  # Convert a sample data to a matrix
         max_g = -float('inf')  # The initial value of max_g2 is set to the negative infinity
         for i in range(class_num):  # For all classes
-            dis = np.linalg.norm(test_x.reshape((d,)) - mean[i].reshape((d,))) ** 2  # Compute the distance between the sample data and the mean, and then square it
+            dis = np.linalg.norm(test_x.reshape((d,)) - mean[i].reshape(
+                (d,))) ** 2  # Compute the distance between the sample data and the mean, and then square it
             # Second term of the residual of subspace projection
             euc_dis = [0] * int(d)  # Initialization
             ma_dis = [0] * int(d)  # Initialization
             for j in range(int(d)):  # For the range of d
                 euc_dis[j] = ((eigenvector[i][:, j].T * (test_x - mean[i]))[0, 0]) ** 2
-                ma_dis[j] = (((test_x - mean[i]).T * eigenvector[i][:, j].reshape((4,-1)))[0, 0]) ** 2
+                ma_dis[j] = (((test_x - mean[i]).T * eigenvector[i][:, j])[0, 0]) ** 2
 
             g = 0  # Initialize the MQDF1
             for j in range(int(d)):  # For the range of d
@@ -172,7 +174,7 @@ def MQDF2_model(cov, d, k, class_num):  # Function to obtain the trained paramet
         covMat = cov[i] # Get the covariance matrix of ith class
         eigvals, eigvecs = np.linalg.eig(covMat) # Obtain eigenvalues and eigenvectors from the cov. matrix. Tip: usenp.linalg.eig()
         # Disordering the eigenvalues
-        id = np.argsort(eigvals)# Get the ascending order of the eigenvalue indexes. Tip: use array.argsort()
+        id = eigvals.argsort()# Get the ascending order of the eigenvalue indexes. Tip: use array.argsort()
         id = id[::-1] # Convert id to the descending order of the eigenvalues. Tip: use slicing as [::-1]
         eigvals = eigvals[id] # Descending the eigenvalues
         eigvecs = eigvecs[:,id] # Descending the eigenvectors
@@ -196,7 +198,7 @@ def predict_MQDF2(d, np_x, class_num, k, mean, eigenvalue, eigenvector, delta): 
             ma_dis = [0] * int(k)  # Initialization
             for j in range(int(k)): # For the range of k
                 euc_dis[j] = ((eigenvector[i][:, j].T * (test_x - mean[i]))[0, 0]) ** 2
-                ma_dis[j] = (((test_x - mean[i]).T * eigenvector[i][:, j].reshape((4,-1)))[0, 0]) ** 2
+                ma_dis[j] = (((test_x - mean[i]).T * eigenvector[i][:, j])[0, 0]) ** 2
 
             g2 = 0  # Initialize the MQDF2
             for j in range(int(k)): # For the range of k
@@ -255,6 +257,7 @@ if __name__ == '__main__':
 
     k_list = []
     h_list = []
+    t_list = []
     mqdf1_acc_list = []
     mqdf2_acc_list = []
 
@@ -263,7 +266,7 @@ if __name__ == '__main__':
 
     ###############################################################################################################
     #                                   YOU NEED FILL FOLLOWING CODES:
-    for h in range(100,120): # find a range of h for test
+    for h in range(10,50): # find a range of h for test
     ###############################################################################################################
         mqdf_sum_avg_acc = 0
         cnt = 1
@@ -304,7 +307,7 @@ if __name__ == '__main__':
         h_list.append(h*.01)
         mqdf1_acc_list.append(MQDF_avg_acc)
     stop = timeit.default_timer() # Stop timer
-    draw(h_list, mqdf1_acc_list, 'h', 'Classification rate / %', "mqdf_acc")
+    # draw(h_list, mqdf1_acc_list, 'h', 'Classification rate / %', "mqdf_acc")
     # print('Running time of MQDF1 with 5-fold cross validation:', stop - start) # Running time of MQDF1
     log_string(logger, 'Running time of MQDF1 with 5-fold cross validation for each h: %.3f' %((stop - start)/len(h_list)))
 
@@ -313,11 +316,11 @@ if __name__ == '__main__':
 
     ###############################################################################################################
     #                                   YOU NEED FILL FOLLOWING CODES:
-    start = timeit.default_timer()  # To measure the running time of MQDF1, start timer
     for k in range(1,4): # find a range of k for test
     ##############################################################################################################
         mqdf_sum_avg_acc = 0
         cnt = 1
+        start = timeit.default_timer()
         for index in range(len(five_data)): # 5-fold cross validation
             total_subset = iris.combine_train(index, five_data)  # Index denotes the array for testing
             sep_dataset = iris.separate_class(total_subset[0])  # Return separated train datasets by three classes
@@ -351,10 +354,11 @@ if __name__ == '__main__':
 
         MQDF_avg_acc  = mqdf_sum_avg_acc / len(five_data) # Calculate the average accuracy of 5-fold cross validation
         # print('Averay accuracy of 5-fold cross-validation when k =', k, ':', MQDF_avg_acc)
-        log_string(logger, 'Averay accuracy of 5-fold cross-validation when k = %d is %.2f' %(k, MQDF_avg_acc))
-
+        stop = timeit.default_timer() # Stop timer
         k_list.append(k)
         mqdf2_acc_list.append(MQDF_avg_acc)
-    stop = timeit.default_timer() # Stop timer
+        t_list.append(stop - start)
+
+        log_string(logger, 'Averay accuracy of 5-fold cross-validation when k = %d is %.2f, while running time is %.3f' %(k, MQDF_avg_acc, (stop - start)))
     # print('Running time of MQDF2 with 5-fold cross validation:', stop - start) # Running time of MQDF2
-    log_string(logger, 'Running time of MQDF2 with 5-fold cross validation for each k: %.3f' %((stop - start)/len(k_list)))
+    # log_string(logger, 'Running time of MQDF2 with 5-fold cross validation for each k: %.3f' %((stop - start)/len(k_list)))
