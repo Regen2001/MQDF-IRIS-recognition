@@ -127,6 +127,23 @@ def MQDF1_model(cov, d, class_num, h):  # Function to obtain the trained paramet
         ###############################################################################################################
     return eigenvalue, eigenvector, delta
 
+def MQDF1_model_h(cov, d, class_num):  # Function to obtain the trained parameters of MQDF1
+    eigenvalue = []  # Initialize a list to store eigenvalues
+    eigenvector = []  # Initialize a list to store eigenvectors
+    delta = [0] * class_num  # Each delta value of classes will be stored here
+    # h2I = np.eye(d) * (h**2)
+
+    for i in range(class_num):  # For all classes
+        ###############################################################################################################
+        #                                   YOU NEED FILL FOLLOWING CODES:
+        covMat = cov[i] # Get the covariance matrix of ith class
+        eigvals, eigvecs = np.linalg.eig(covMat) # Obtain eigenvalues and eigenvectors from the cov. matrix. Tip: usenp.linalg.eig()
+        eigenvector.append(eigvecs)  # append eigvecs to eigenvector
+        h2 = np.mean(eigvals)
+        eigenvalue.append(eigvals + h2)  # add h^2 to eigvals, append eigvals to eigenvalue
+        delta[i] = np.mean(eigvals) # Compute delta as the mean of minor values.
+        ###############################################################################################################
+    return eigenvalue, eigenvector, delta, h2
 
 def predict_MQDF1(d, np_x, class_num, mean, eigenvalue, eigenvector,
                   delta):  # Function to perform classification based on the MQDF1 trained parameters
@@ -257,19 +274,20 @@ if __name__ == '__main__':
 
     k_list = []
     h_list = []
-    t_list = []
+    t1_list = []
+    t2_list = []
     mqdf1_acc_list = []
     mqdf2_acc_list = []
 
     log_string(logger, 'loaded training set')
-    start = timeit.default_timer()  # To measure the running time of MQDF1, start timer
 
     ###############################################################################################################
     #                                   YOU NEED FILL FOLLOWING CODES:
-    for h in range(10,50): # find a range of h for test
+    for h in range(0,100,10): # find a range of h for test
     ###############################################################################################################
         mqdf_sum_avg_acc = 0
         cnt = 1
+        start = timeit.default_timer()  # To measure the running time of MQDF1, start timer
         for index in range(len(five_data)): # 5-fold cross validation
             total_subset = iris.combine_train(index, five_data)  # Index denotes the array for testing
             sep_dataset = iris.separate_class(total_subset[0])  # Return separated train datasets by three classes
@@ -298,25 +316,67 @@ if __name__ == '__main__':
             mqdf_sum_avg_acc += MQDF_accuracy
             # print(cnt, 'th accuracy:', MQDF_accuracy)
             cnt += 1
-
+        stop = timeit.default_timer() # Stop timer
         MQDF_avg_acc  = mqdf_sum_avg_acc / len(five_data) # Calculate the average accuracy of 5-fold cross validation
         # print('Averay accuracy of 5-fold cross-validation when h =', h*.01, ':', MQDF_avg_acc)
-        if (h % 5) == 0:
-            log_string(logger, 'Averay accuracy of 5-fold cross-validation when h = %.2f is %.2f' %(h*.01, MQDF_avg_acc))
+        if (h % 10) == 0:
+            log_string(logger, 'Averay accuracy of 5-fold cross-validation when h = %.2f is %.2f, running time is %.3f' %(h*.01, MQDF_avg_acc, (stop-start)))
         
         h_list.append(h*.01)
+        t1_list.append(stop-start)
         mqdf1_acc_list.append(MQDF_avg_acc)
-    stop = timeit.default_timer() # Stop timer
-    draw(h_list, mqdf1_acc_list, 'h', 'Classification rate / %', "mqdf_acc")
+    # draw(h_list, mqdf1_acc_list, 'h', 'Classification rate / %', "mqdf_acc")
     # print('Running time of MQDF1 with 5-fold cross validation:', stop - start) # Running time of MQDF1
-    log_string(logger, 'Running time of MQDF1 with 5-fold cross validation for each h: %.3f' %((stop - start)/len(h_list)))
+    log_string(logger, 'Running time of MQDF1 with 5-fold cross validation for each h: %.3f' %(np.mean(t1_list)))
+    log_string(logger, "")
+
+    log_string(logger, "If h^2 is same with the mean of eigenvector")
+
+    mqdf_sum_avg_acc = 0
+    h2_list = []
+    cnt = 1
+    start = timeit.default_timer()  # To measure the running time of MQDF1, start timer
+    for index in range(len(five_data)): # 5-fold cross validation
+        total_subset = iris.combine_train(index, five_data)  # Index denotes the array for testing
+        sep_dataset = iris.separate_class(total_subset[0])  # Return separated train datasets by three classes
+        sep_data = [sep_dataset[0], sep_dataset[1], sep_dataset[2]] # Nested list of the three datasets
+        # Only extract the numeric data from the datasets
+        np_se = np.array(iris.numeric_n_name(sep_data[0])[0])
+        np_ver = np.array(iris.numeric_n_name(sep_data[1])[0])
+        np_vir = np.array(iris.numeric_n_name(sep_data[2])[0])
+        # Prepare the train dataset by converting the numbers in 'str' to 'float
+        train = [np_se.astype(float), np_ver.astype(float), np_vir.astype(float)]
+        mean, cov = QDF_model(train, classNum) # Obtain the mean and covariance matrices
+        eigval, eigvec, delta, h2 = MQDF1_model_h(cov, d, classNum) # Obtain the eigenvalues, eigenvectors and delta
+        # mean, eigenvalues, eigenvectors, k and delta will be the trained parameters of MQDF2 for prediction
+        # print(f'Training process of the MQDF1 {index} model finished.')
+        # log_string(logger, 'Training process of the MQDF1 %d model finished' %(index))
+
+        # Prepare the test dataset
+        x = np.array(iris.numeric_n_name(total_subset[1])[0])  # numeric data of test set
+        np_x = x.astype(float)
+        x_len = len(np_x)
+
+        class_x = iris.numeric_n_name(total_subset[1])[1]  # Real class names of each test set
+        predic = predict_MQDF1(d, np_x, classNum, mean, eigval, eigvec, delta) # Input the trained parameters to predict
+
+        MQDF_accuracy = mqdf_accuracy(predic, class_x) # Based on the prediction result, compute the classification accuracy
+        mqdf_sum_avg_acc += MQDF_accuracy
+        # print(cnt, 'th accuracy:', MQDF_accuracy)
+        log_string(logger, 'For %d fold, the accuracy is %.2f, when h is %.2f' %(cnt, MQDF_accuracy, h2))
+        cnt += 1
+        h2_list.append(h2)
+    stop = timeit.default_timer() # Stop timer
+
+    h2_list = np.asarray(h2_list)
+    log_string(logger, 'Averay accuracy of 5-fold cross-validation when h = %.2f is %.2f, running time is %.3f' %(np.mean(h2_list), MQDF_avg_acc, (stop-start)))
 
     log_string(logger, "")
 
 
     ###############################################################################################################
     #                                   YOU NEED FILL FOLLOWING CODES:
-    for k in range(1,4): # find a range of k for test
+    for k in range(0,4): # find a range of k for test
     ##############################################################################################################
         mqdf_sum_avg_acc = 0
         cnt = 1
@@ -352,13 +412,13 @@ if __name__ == '__main__':
             # print(cnt, 'th accuracy:', MQDF_accuracy)
             cnt += 1
 
+        stop = timeit.default_timer() # Stop timer
         MQDF_avg_acc  = mqdf_sum_avg_acc / len(five_data) # Calculate the average accuracy of 5-fold cross validation
         # print('Averay accuracy of 5-fold cross-validation when k =', k, ':', MQDF_avg_acc)
-        stop = timeit.default_timer() # Stop timer
         k_list.append(k)
         mqdf2_acc_list.append(MQDF_avg_acc)
-        t_list.append(stop - start)
-
+        t2_list.append(stop - start)
+        
         log_string(logger, 'Averay accuracy of 5-fold cross-validation when k = %d is %.2f, while running time is %.3f' %(k, MQDF_avg_acc, (stop - start)))
     # print('Running time of MQDF2 with 5-fold cross validation:', stop - start) # Running time of MQDF2
     # log_string(logger, 'Running time of MQDF2 with 5-fold cross validation for each k: %.3f' %((stop - start)/len(k_list)))
